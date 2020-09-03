@@ -2,6 +2,7 @@
 #define LA3DM_VECTOR3_H
 
 #include <iostream>
+#include <vector>
 #include <math.h>
 
 namespace la3dm {
@@ -19,7 +20,7 @@ namespace la3dm {
         /*!
          * \brief Default constructor
          */
-        Vector3() { data[0] = data[1] = data[2] = 0.0; }
+        Vector3() { data[0] = data[1] = data[2] = 0.f; }
 
         /*!
          * \brief Copy constructor
@@ -42,6 +43,10 @@ namespace la3dm {
             data[0] = x;
             data[1] = y;
             data[2] = z;
+        }
+
+        ~Vector3()
+        {
         }
 
 
@@ -263,7 +268,6 @@ namespace la3dm {
 
     protected:
         float data[3];
-
     };
 
     //! user friendly output in format (x y z)

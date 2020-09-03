@@ -39,12 +39,12 @@ namespace la3dm {
          * @param x input matrix (NX3)
          * @param y target matrix (NX1)
          */
-        void train(const MatrixXType &x, const MatrixYType &y) {
-            this->x = MatrixXType(x);
-            covMaterniso3(x, x, K);
-           // covSparse(x, x, K);
+        void train(const MatrixXType &x_, const MatrixYType &y) {
+            this->x = MatrixXType(x_);
+            // covMaterniso3(x_, K);
+           covSparse(x, x, K);
             K = K + noise * MatrixKType::Identity(K.rows(), K.cols());
-            Eigen::LLT<MatrixKType> llt(K);
+            Eigen::LLT<MatrixKType> llt{K};
             alpha = llt.solve(y);
             L = llt.matrixL();
             trained = true;
@@ -81,13 +81,15 @@ namespace la3dm {
             assert(trained == true);
             MatrixKType Ks;
             covMaterniso3(x, xs, Ks);
-           // covSparse(x, xs, Ks);
+            // covSparse(x, xs, Ks);
+            // covSquareExp(x, xs, Ks);
             m = Ks.transpose() * alpha;
 
             MatrixKType v = L.template triangularView<Eigen::Lower>().solve(Ks);
             MatrixDKType Kss;
             covMaterniso3(xs, xs, Kss);
             // covSparse(xs, xs, Kss);
+            // covSquareExp(xs, xs, Ks);
             var = Kss - (v.transpose() * v).diagonal();
         }
 
@@ -104,6 +106,20 @@ namespace la3dm {
                 d.row(i) = (z.rowwise() - x.row(i)).rowwise().norm();
             }
         }
+        MatrixKType dist(const MatrixXType &x, const MatrixXType &z) const {
+            MatrixKType d = MatrixKType::Zero(x.rows(), z.rows());
+            for (int i = 0; i < x.rows(); ++i) {
+                d.row(i) = (z.rowwise() - x.row(i)).rowwise().norm();
+            }
+
+            return d;
+        }
+
+        void covSquareExp(const MatrixXType& x, const MatrixXType& z, MatrixKType& Kxz) const
+        {
+            dist(x/ell, z/ell, Kxz);
+            Kxz = exp(-pow(Kxz.array(), 2)/2)*sf2*sf2;
+        }
 
         /*
          * @brief Matern3 kernel.
@@ -112,8 +128,24 @@ namespace la3dm {
          * @return Kxz covariance matrix
          */
         void covMaterniso3(const MatrixXType &x, const MatrixXType &z, MatrixKType &Kxz) const {
+            // MatrixXType x1 = 1.73205/ell*x;
+            // MatrixXType z1 = 1.73205/ell*z;
             dist(1.73205 / ell * x, 1.73205 / ell * z, Kxz);
+            // dist(x1, z1, Kxz);
             Kxz = ((1 + Kxz.array()) * exp(-Kxz.array())).matrix() * sf2;
+        }
+
+        void covMaterniso3(const MatrixXType &x, MatrixKType &Kx) {
+            // MatrixXType x1 = 1.73205/ell*x;
+            // Eigen::MatrixXf x1 = 1.73205f/ell*x;
+            // Kx = dist(1.73205 / ell * x, 1.73205 / ell * x);
+            // Kx = dist(x1, x1);
+            Kx = MatrixKType::Zero(x.rows(), x.rows());
+            for (int i = 0; i < x.rows(); ++i) {
+                Kx.row(i) = ((x.rowwise() - x.row(i))*1.73205/ell).rowwise().norm();
+            }
+
+            Kx = ((1 + Kx.array()) * exp(-Kx.array())).matrix() * sf2;
         }
 
         /*

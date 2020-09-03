@@ -5,6 +5,9 @@
 
 using std::vector;
 
+#define DEBUG
+#define OPENMP
+
 #ifdef DEBUG
 
 #include <iostream>
@@ -15,7 +18,7 @@ std::cout << "Debug: " << msg << std::endl; }
 
 namespace la3dm {
 
-    GPOctoMap::GPOctoMap() : GPOctoMap(0.1f, 4, 1.0, 1.0, 0.01, 100, 0.001f, 1000.0f, 0.02f, 0.3f, 0.7f) { }
+    // GPOctoMap::GPOctoMap() : GPOctoMap(0.1f, 4, 1.0, 1.0, 0.01, 100, 0.001f, 1000.0f, 0.02f, 0.3f, 0.7f) { }
 
     GPOctoMap::GPOctoMap(float resolution, unsigned short block_depth, float sf2, float ell, float noise, float l,
                          float min_var,
@@ -233,11 +236,13 @@ namespace la3dm {
         ////////// Training /////////////////////////////
         /////////////////////////////////////////////////
         vector<BlockHashKey> test_blocks;
-        std::unordered_map<BlockHashKey, GPR3f *> gpr_arr;
+        std::unordered_map<BlockHashKey, GPR3f> gpr_arr;
+        // std::unordered_map<BlockHashKey, GPR3f *> gpr_arr;
 #ifdef OPENMP
 #pragma omp parallel for schedule(dynamic)
 #endif
-        for (int i = 0; i < blocks.size(); ++i) {
+        for (int i = 0; i < blocks.size(); ++i)
+         {
             BlockHashKey key = blocks[i];
             ExtendedBlock eblock = get_extended_block(key);
             if (has_gp_points_in_bbox(eblock))
@@ -253,15 +258,29 @@ namespace la3dm {
             if (block_xy.size() < 1)
                 continue;
 
-            vector<float> block_x, block_y;
-            for (auto it = block_xy.cbegin(); it != block_xy.cend(); ++it) {
-                block_x.push_back(it->first.x());
-                block_x.push_back(it->first.y());
-                block_x.push_back(it->first.z());
-                block_y.push_back(it->second);
+            GPR3f::MatrixXType block_x{block_xy.size(), 3};
+            GPR3f::MatrixYType block_y{block_xy.size(), 1};
+
+            for(int i = 0; i < block_xy.size(); ++i)
+            {
+                block_x(i, 0) = block_xy[i].first.x();
+                block_x(i, 1) = block_xy[i].first.y();
+                block_x(i, 2) = block_xy[i].first.z();
+                block_y(i) = block_xy[i].second;
             }
-            GPR3f *gpr = new GPR3f(OcTreeNode::sf2, OcTreeNode::ell, OcTreeNode::noise);
-            gpr->train(block_x, block_y);
+
+            // vector<float> block_x, block_y;
+            // for (auto it = block_xy.cbegin(); it != block_xy.cend(); ++it) 
+            // {
+            //     block_x.push_back(it->first.x());
+            //     block_x.push_back(it->first.y());
+            //     block_x.push_back(it->first.z());
+            //     block_y.push_back(it->second);
+            // }
+            // GPR3f *gpr = new GPR3f(OcTreeNode::sf2, OcTreeNode::ell, OcTreeNode::noise);
+            // gpr->train(block_x, block_y);
+            GPR3f gpr{OcTreeNode::sf2, OcTreeNode::ell, OcTreeNode::noise};
+            gpr.train(block_x, block_y);
 #ifdef OPENMP
 #pragma omp critical
 #endif
@@ -301,11 +320,13 @@ namespace la3dm {
             ExtendedBlock eblock = block->get_extended_block();
             for (auto block_it = eblock.cbegin(); block_it != eblock.cend(); ++block_it) {
                 auto gpr = gpr_arr.find(*block_it);
+                // std::unordered_map<BlockHashKey, GPR3f>::const_iterator gpr = gpr_arr.find(*block_it);
                 if (gpr == gpr_arr.end())
                     continue;
 
                 vector<float> m, var;
-                gpr->second->predict(xs, m, var);
+                gpr->second.predict(xs, m, var);
+                // gpr->second->predict(xs, m, var);
 
                 int j = 0;
                 for (auto leaf_it = block->begin_leaf(); leaf_it != block->end_leaf(); ++leaf_it, ++j) {
@@ -339,8 +360,8 @@ namespace la3dm {
 
         ////////// Cleaning /////////////////////////////
         /////////////////////////////////////////////////
-        for (auto it = gpr_arr.begin(); it != gpr_arr.end(); ++it)
-            delete it->second;
+        // for (auto it = gpr_arr.begin(); it != gpr_arr.end(); ++it)
+        //     delete it->second;
 
         rtree.RemoveAll();
     }
@@ -366,8 +387,6 @@ namespace la3dm {
         downsample(cloud, sampled_hits, ds_resolution);
 
         PCLPointCloud frees;
-        frees.height = 1;
-        frees.width = 0;
         xy.clear();
         for (auto it = sampled_hits.begin(); it != sampled_hits.end(); ++it) {
             point3f p(it->x, it->y, it->z);
@@ -378,14 +397,21 @@ namespace la3dm {
             }
             xy.emplace_back(p, 1.0f);
 
-            PointCloud frees_n;
+            // PointCloud frees_n;
+            std::vector<point3f> frees_n;
             beam_sample(p, origin, frees_n, free_resolution);
 
-            frees.push_back(PCLPointType(origin.x(), origin.y(), origin.z()));
-            for (auto p = frees_n.begin(); p != frees_n.end(); ++p) {
-                frees.push_back(PCLPointType(p->x(), p->y(), p->z()));
-                frees.width++;
+            PCLPointCloud tmp_cloud{1+frees_n.size(), 1};
+            tmp_cloud.points[0].x = origin.x();
+            tmp_cloud.points[0].y = origin.y();
+            tmp_cloud.points[0].z = origin.z();
+            for(int i = 1; i < frees_n.size(); ++i)
+            {
+                tmp_cloud.points[i].x = frees_n[i].x();
+                tmp_cloud.points[i].y = frees_n[i].y();
+                tmp_cloud.points[i].z = frees_n[i].z();
             }
+            frees += tmp_cloud;
         }
 
         PCLPointCloud sampled_frees;

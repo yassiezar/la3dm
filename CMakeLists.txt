@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(la3dm)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")# -O3")
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -100,7 +100,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include/bgkoctomap include/common include/gpoctomap
+  LIBRARIES gpoctomap
 #  CATKIN_DEPENDS geometry_msgs pcl_ros roscpp
 #  DEPENDS system_lib
 )
@@ -118,6 +119,7 @@ include_directories(
         include/common
         ${catkin_INCLUDE_DIRS}
         ${OCTOMAP_INCLUDE_DIRS}
+        ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a cpp library
@@ -142,6 +144,11 @@ set(GP_SOURCE_FILES
         src/gpoctomap/gpoctomap.cpp
         src/gpoctomap/gpoctree_node.cpp
         src/gpoctomap/gpoctree.cpp
+)
+
+add_library(gpoctomap
+  ${GP_SOURCE_FILES}
+  ${COMMON_SOURCE_FILES}
 )
 
 add_executable(bgkoctomap_static_node 
@@ -176,6 +183,11 @@ add_executable(gpoctomap_server
 # add_dependencies(BGKOctoMap_node BGKOctoMap_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
+
+target_link_libraries(gpoctomap
+  ${catkin_LIBRARIES}
+)
+
 target_link_libraries(bgkoctomap_static_node
         ${catkin_LIBRARIES}
 )
@@ -212,18 +224,18 @@ target_link_libraries(gpoctomap_server
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS bgkoctomap BGKOctoMap_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS gpoctomap
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/common/ include/bgkoctomap/ include/gpoctomap/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES

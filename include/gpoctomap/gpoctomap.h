@@ -11,8 +11,10 @@
 
 namespace la3dm {
     /// PCL PointCloud types as input
-    typedef pcl::PointXYZ PCLPointType;
-    typedef pcl::PointCloud<PCLPointType> PCLPointCloud;
+    // typedef pcl::PointXYZ PCLPointType;
+    // typedef pcl::PointCloud<PCLPointType> PCLPointCloud;
+    using PCLPointType = pcl::PointXYZ;
+    using PCLPointCloud = pcl::PointCloud<PCLPointType>;
 
     /*
      * @brief GPOctoMap
@@ -32,7 +34,7 @@ namespace la3dm {
         typedef RTree<GPPointType *, float, 3, float> MyRTree;
 
     public:
-        GPOctoMap();
+        // GPOctoMap();
 
         /*
          * @param resolution (default 0.1m)
@@ -47,9 +49,9 @@ namespace la3dm {
          * @param free_thresh free threshold for Occupancy probability (default 0.3)
          * @param occupied_thresh occupied threshold for Occupancy probability (default 0.7)
          */
-        GPOctoMap(float resolution, unsigned short block_depth, float sf2, float ell, float noise, float l,
-                  float min_var,
-                  float max_var, float max_known_var, float free_thresh, float occupied_thresh);
+        GPOctoMap(float resolution=0.1f, unsigned short block_depth=4, float sf2=1.f, float ell=1.f,
+                  float noise=0.01f, float l=100.f, float min_var=0.001f, float max_var=1000.f, 
+                  float max_known_var=0.02f, float free_thresh=0.3f, float occupied_thresh=0.7f);
 
         ~GPOctoMap();
 
