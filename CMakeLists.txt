@@ -100,9 +100,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include/common include/gpoctomap include/bgkoctomap
 #  CATKIN_DEPENDS geometry_msgs pcl_ros roscpp
 #  DEPENDS system_lib
+  LIBRARIES ${PROJECT_NAME}
 )
 
 ###########
@@ -142,6 +143,11 @@ set(GP_SOURCE_FILES
         src/gpoctomap/gpoctomap.cpp
         src/gpoctomap/gpoctree_node.cpp
         src/gpoctomap/gpoctree.cpp
+)
+
+add_library(la3dm
+    ${COMMON_SOURCE_FILES}
+    ${GP_SOURCE_FILES}
 )
 
 add_executable(bgkoctomap_static_node 
@@ -212,18 +218,18 @@ target_link_libraries(gpoctomap_server
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS bgkoctomap BGKOctoMap_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS la3dm
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/gpoctomap/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
